@@ -82,7 +82,7 @@ ADMIN_USER=admin                # Web dashboard login
 ADMIN_PASS=your_secure_password # Web dashboard password
 ```
 
-> **TIP:** To get your Stripe webhook secret, set up a webhook in your [Stripe dashboard](https://dashboard.stripe.com/webhooks) pointing to `https://your-public-url.com/stripe/webhook`, trigger a payment, and copy the secret from Stripe.
+> 💡 **TIP:** To get your Stripe webhook secret, set up a webhook in your [Stripe dashboard](https://dashboard.stripe.com/webhooks) pointing to `https://your-public-url.com/stripe/webhook`, trigger a payment, and copy the secret from Stripe.
 
 ---
 
@@ -117,19 +117,33 @@ Copy the HTTPS URL and use it as your `BASE_URL` in `.env`.
 2. Add your test API keys to `.env`.
 3. Add a webhook in the Stripe dashboard for your `BASE_URL/stripe/webhook`.
    - Listen for at least: `checkout.session.completed`
-4. Instruct users (contractors/sellers) to connect their Stripe account via `/connect_stripe` in the Telegram bot.
+4. Instruct users (contractors/sellers) to connect their Stripe account via the bot's main menu or the `/connect` command.
 
 ---
 
 ## **5. Telegram Bot Usage**
 
-- **Start:** `/start` to see the menu.
-- **New milestone deal:** `/newdeal` (reply to a user for counterparty, follow prompts for title and milestones).
-- **One-time trade:** Choose from main menu or use `/start_trade` (if implemented in menu).
-- **Fund milestone/trade:** Click the Deposit/Pay button, pay via Stripe.
-- **Release:** Client releases payment per milestone or on trade completion.
-- **Dispute:** Buyer/Seller can raise a dispute, upload photo proof, and describe the issue.
-- **Admin:** Use `/admin_split`, `/admin_refund`, `/admin_resolve` for advanced manual control (see code for usage).
+The bot is primarily driven by inline buttons.
+
+- **Start:** Send `/start` to the bot to see the main menu.
+- **Create a Deal:**
+    - From the main menu, choose **"Start One-Time Trade"** or **"Start Milestone Project"**.
+    - The bot will ask you to **reply to a message** from the other person (the buyer or contractor) to identify them.
+    - Follow the bot's prompts to set a title, amount, and (for projects) add milestones one by one.
+- **Manage a Deal:**
+    - **Fund:** The client/buyer clicks the "Deposit" or "Pay" button to fund the escrow via Stripe.
+    - **Release:** The client/buyer clicks "Release" for a milestone or "Confirm Delivery" for a trade to release funds to the other party.
+    - **Dispute:** Either party can click "Raise Dispute" on a funded deal. The bot will guide them through providing a reason and photo proof, which notifies an admin.
+- **User Commands:**
+    - `/profile [@username]`: View your own or another user's reputation, stats, and reviews.
+    - `/connect`: An alias for connecting a Stripe account.
+
+- **Admin Commands:**
+    - `/admin_verify @username`: Grants a user "Verified" status.
+    - `/admin_unverify @username`: Revokes "Verified" status.
+    - `/admin_split [deal_id] [amount_to_seller]`: Resolves a dispute by splitting the funds.
+    - `/admin_refund [milestone_id] [reason]`: Issues a full refund for a milestone.
+    - `/admin_resolve [deal_id]`: Manually marks a dispute as resolved and unlocks the deal.
 
 ---
 
@@ -137,15 +151,15 @@ Copy the HTTPS URL and use it as your `BASE_URL` in `.env`.
 
 - Access at: `http(s)://<BASE_URL>/admin`
 - Login with credentials set in `.env`
-- View/manage all Users, Deals, Reviews, Disputes, Referrals
+- View/manage all Users, Deals, Reviews, Disputes, and Referrals.
 
 ---
 
 ## **7. Scheduled Automation**
 
 - **Offer Expiration:** Unfunded trade offers are auto-cancelled after 24h.
-- **Auto-Refund:** If seller doesn't ship within 7 days, buyer is auto-refunded.
-- **Auto-Release:** If buyer doesn't confirm delivery in 7 days, funds auto-release to seller.
+- **Auto-Refund:** If a seller doesn't ship within 7 days, the buyer is auto-refunded.
+- **Auto-Release:** If a buyer doesn't confirm delivery in 7 days, funds auto-release to the seller.
 - **All scheduler logic is managed via `scheduler.py` and APScheduler.**
 
 ---
@@ -174,7 +188,7 @@ Copy the HTTPS URL and use it as your `BASE_URL` in `.env`.
 |-----------------------------------------------|-------------|----------------------------------------------------------------------|
 | Secure peer-to-peer escrow (deals/trades)     | **✅**      | All logic for trade, milestone, and deal flows implemented           |
 | Multi-milestone support                       | **✅**      | Each milestone independently funded and released                      |
-| Stripe Connect onboarding                     | **✅**      | Sellers/contractors onboard via `/connect_stripe`                    |
+| Stripe Connect onboarding                     | **✅**      | Sellers/contractors onboard via the bot's menu or `/connect`         |
 | Payments/escrow held via Stripe               | **✅**      | All funds held in Stripe until released or refunded                   |
 | Admin dashboard for all data                  | **✅**      | Flask-Admin at `/admin` with login                                   |
 | Raise and resolve disputes (with file proof)  | **✅**      | Users describe problem, upload image; admins notified                 |
@@ -182,7 +196,7 @@ Copy the HTTPS URL and use it as your `BASE_URL` in `.env`.
 | Scheduler: Offer expiration                   | **✅**      | 24h deadline on all offers                                           |
 | Scheduler: Auto-refund on unshipped trades    | **✅**      | 7-day deadline; triggers Stripe refund                               |
 | Scheduler: Auto-release on unconfirmed trades | **✅**      | 7-day deadline; triggers Stripe transfer                             |
-| Ratings and reviews after completion          | **✅**      | Both parties prompted for rating and comment                         |
+| Ratings and reviews after completion          | **✅**      | Both parties prompted for rating                                     |
 | Referrals, verification, free trades          | **✅**      | As per database model and brief                                      |
 | All Stripe logic (deposits, transfers, refund)| **✅**      | Real Stripe integration for deposit, payout, refund                  |
 | All bot and dashboard environment config      | **✅**      | Managed via `.env`                                                   |

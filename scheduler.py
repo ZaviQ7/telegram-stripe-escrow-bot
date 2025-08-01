@@ -5,7 +5,6 @@ from telegram.ext import Application
 from database.database import DB
 from database.models import Deal
 from stripe_utils.stripe_utils import StripeHelper
-from bot.handlers import _prompt_for_ratings # Import for use after auto-release
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +24,9 @@ def remove_job(job_queue, job_id: str):
 
 async def run_scheduled_job(context: Application):
     """The callback function that APScheduler executes."""
+    # THIS IS THE FIX: The import is moved inside the function to break the circular dependency.
+    from bot.handlers import _prompt_for_ratings 
+
     job_context = context.job.context
     deal_id = job_context['deal_id']
     job_type = job_context['job_type']

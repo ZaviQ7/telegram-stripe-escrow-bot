@@ -3,11 +3,24 @@ from typing import Dict, Optional
 
 class StripeHelper:
     def __init__(self, secret_key: str):
-        """
-        Initialise the Stripe helper with the provided secret key.
-        """
+        """Initialise the Stripe helper with the provided secret key."""
         stripe.api_key = secret_key
         self.stripe = stripe
+
+    def create_express_account(self) -> str:
+        """Creates a new Stripe Express account and returns its ID."""
+        acct = self.stripe.Account.create(type="express")
+        return acct["id"]
+
+    def onboarding_url(self, account_id: str, refresh_url: str, return_url: str) -> str:
+        """Creates an account link for onboarding a user."""
+        link = self.stripe.AccountLink.create(
+            account=account_id,
+            refresh_url=refresh_url,
+            return_url=return_url,
+            type="account_onboarding",
+        )
+        return link["url"]
 
     def create_checkout_session(
         self,
@@ -21,24 +34,16 @@ class StripeHelper:
         metadata: Optional[Dict[str, str]] = None,
     ) -> str:
         """
-        Create a Stripe Checkout session for either a one‑time trade or a milestone
-        payment.
-
-        The ``deal_id`` parameter is always used as the transfer group identifier.
-        If a ``metadata`` dictionary is provided, it will be merged with a
-        ``deal_id`` entry so that both the deal and milestone can be identified
-        in the webhook.  For milestone payments, ``metadata`` should include a
-        ``milestone_id`` field.
+        Create a Stripe Checkout session for either a one-time trade or a
+        milestone payment.
         """
-        # Build metadata – always include the deal ID
+        # Build metadata - always include the deal ID
         if metadata is None:
             metadata_data = {"deal_id": str(deal_id)}
         else:
             metadata_data = metadata.copy()
             metadata_data.setdefault("deal_id", str(deal_id))
 
-        # Use the deal_id from metadata for the transfer group so that
-        # milestone payments still group transfers by deal
         transfer_group_id = metadata_data.get("deal_id", str(deal_id))
         payment_intent_data = {
             "metadata": metadata_data,
@@ -49,17 +54,19 @@ class StripeHelper:
 
         session = self.stripe.checkout.Session.create(
             payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": currency,
-                    "product_data": {
-                        "name": f"Escrow for '{deal_title}'",
-                        "description": f"Deal ID: {deal_id}",
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": currency,
+                        "product_data": {
+                            "name": f"Escrow for '{deal_title}'",
+                            "description": f"Deal ID: {deal_id}",
+                        },
+                        "unit_amount": int(amount * 100),
                     },
-                    "unit_amount": int(amount * 100),
-                },
-                "quantity": 1,
-            }],
+                    "quantity": 1,
+                }
+            ],
             mode="payment",
             success_url=success_url,
             cancel_url=cancel_url,
@@ -67,9 +74,7 @@ class StripeHelper:
         )
         return session.url
 
-    def transfer(
-        self, amount: float, currency: str, destination: str, transfer_group: str
-    ) -> str:
+    def transfer(self, amount: float, currency: str, destination: str, transfer_group: str) -> str:
         """Transfer funds to a connected account."""
         tx = self.stripe.Transfer.create(
             amount=int(amount * 100),
